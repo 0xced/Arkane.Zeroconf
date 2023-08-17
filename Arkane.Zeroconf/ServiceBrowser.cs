@@ -10,7 +10,8 @@
 using System ;
 using System.Collections ;
 using System.Collections.Generic ;
-
+using System.Runtime.CompilerServices ;
+using System.Threading ;
 using ArkaneSystems.Arkane.Zeroconf.Providers ;
 
 #endregion
@@ -58,4 +59,36 @@ public class ServiceBrowser : IServiceBrowser
     }
 
     public void Browse (string regtype, string domain) { this.Browse (0, AddressProtocol.Any, regtype, domain) ; }
+
+    public async IAsyncEnumerable<IResolvableService> BrowseAsync (uint interfaceIndex, AddressProtocol addressProtocol, string regtype, string domain, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        await foreach (var service in this.browser.BrowseAsync (interfaceIndex, addressProtocol, regtype, domain ?? "local", cancellationToken))
+        {
+            yield return service;
+        }
+    }
+
+    public async IAsyncEnumerable<IResolvableService> BrowseAsync (uint interfaceIndex, string regtype, string domain, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        await foreach (var service in this.BrowseAsync (interfaceIndex, AddressProtocol.Any, regtype, domain, cancellationToken))
+        {
+            yield return service;
+        }
+    }
+
+    public async IAsyncEnumerable<IResolvableService> BrowseAsync (AddressProtocol addressProtocol, string regtype, string domain, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        await foreach (var service in this.BrowseAsync (0, addressProtocol, regtype, domain, cancellationToken))
+        {
+            yield return service;
+        }
+    }
+
+    public async IAsyncEnumerable<IResolvableService> BrowseAsync(string regtype, string domain, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        await foreach (var service in this.BrowseAsync (0, AddressProtocol.Any, regtype, domain, cancellationToken))
+        {
+            yield return service;
+        }
+    }
 }

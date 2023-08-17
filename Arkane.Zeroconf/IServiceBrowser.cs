@@ -9,6 +9,7 @@
 
 using System ;
 using System.Collections.Generic ;
+using System.Threading ;
 
 #endregion
 
@@ -21,4 +22,6 @@ public interface IServiceBrowser : IEnumerable <IResolvableService>, IDisposable
     event ServiceBrowseEventHandler ServiceRemoved ;
 
     void Browse (uint interfaceIndex, AddressProtocol addressProtocol, string regtype, string domain) ;
+
+    IAsyncEnumerable<IResolvableService> BrowseAsync (uint interfaceIndex, AddressProtocol addressProtocol, string regtype, string domain, CancellationToken cancellationToken) ;
 }

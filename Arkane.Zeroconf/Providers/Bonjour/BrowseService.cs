@@ -13,6 +13,7 @@ using System.Net ;
 using System.Runtime.InteropServices ;
 using System.Text ;
 using System.Threading ;
+using System.Threading.Channels ;
 using System.Threading.Tasks ;
 
 #endregion
@@ -27,6 +28,13 @@ public sealed class BrowseService : Service, IResolvableService
     {
         this.SetupCallbacks () ;
     }
+
+    internal BrowseService (Channel<IResolvableService> channel) : this ()
+    {
+        this.channel = channel ;
+    }
+
+    private readonly Channel<IResolvableService> channel ;
 
     private Native.DNSServiceQueryRecordReply queryRecordReplyHandler ;
 
@@ -179,6 +187,7 @@ public sealed class BrowseService : Service, IResolvableService
         {
             var handler = this.Resolved ;
             handler?.Invoke (this, new ServiceResolvedEventArgs (this)) ;
+            this.channel?.Writer.TryWrite (this) ;
         }
     }
 

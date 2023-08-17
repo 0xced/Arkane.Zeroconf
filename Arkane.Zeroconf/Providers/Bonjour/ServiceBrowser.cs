@@ -11,8 +11,10 @@ using System ;
 using System.Collections ;
 using System.Collections.Generic ;
 using System.Diagnostics ;
+using System.Runtime.CompilerServices ;
 using System.Runtime.InteropServices ;
 using System.Threading ;
+using System.Threading.Channels ;
 using System.Threading.Tasks ;
 
 #endregion
@@ -42,6 +44,7 @@ public class ServiceBrowser : IServiceBrowser, IDisposable
     private ServiceRef sdRef = ServiceRef.Zero ;
 
     private Task task ;
+    private Channel<IResolvableService> channel ;
 
     public event ServiceBrowseEventHandler ServiceAdded ;
 
@@ -51,6 +54,20 @@ public class ServiceBrowser : IServiceBrowser, IDisposable
     {
         this.Configure (interfaceIndex, addressProtocol, regtype, domain) ;
         this.StartAsync () ;
+    }
+
+    public async IAsyncEnumerable<IResolvableService> BrowseAsync(uint interfaceIndex, AddressProtocol addressProtocol, string regtype, string domain, [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        var channelOptions = new UnboundedChannelOptions { SingleReader = true } ;
+        channel = Channel.CreateUnbounded<IResolvableService> (channelOptions) ;
+
+        this.Configure (interfaceIndex, addressProtocol, regtype, domain) ;
+        this.StartAsync () ;
+
+        await foreach (var result in channel.Reader.ReadAllAsync (cancellationToken))
+        {
+            yield return result ;
+        }
     }
 
     public void Dispose () { this.Stop () ; }
@@ -144,7 +161,7 @@ public class ServiceBrowser : IServiceBrowser, IDisposable
     {
         var name = Marshal.PtrToStringUTF8 (serviceName) ;
 
-        var service = new BrowseService
+        var service = new BrowseService (channel)
                       {
                           Flags           = flags,
                           Name            = name,
@@ -172,6 +189,10 @@ public class ServiceBrowser : IServiceBrowser, IDisposable
 
             var handler = this.ServiceAdded ;
             handler?.Invoke (this, args) ;
+            if (channel != null)
+            {
+                service.ResolveAsync() ;
+            }
         }
         else
         {
